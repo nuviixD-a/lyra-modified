@@ -1,0 +1,11 @@
+{
+  "name": "lyra-modified",
+  "compatibility_date": "2026-09-01",
+  "main": "worker.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}
