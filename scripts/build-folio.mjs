@@ -1,5 +1,5 @@
 import { copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -85,6 +85,55 @@ const expectedFiles = [
     to: "folio-utils.js",
   },
 ];
+
+function hasPrebuiltFolio() {
+  return expectedFiles.every((file) => {
+    try {
+      return statSync(file.from).size > 0;
+    } catch {
+      return false;
+    }
+  });
+}
+
+async function tryFolioBuild() {
+  try {
+    await ensureInstall();
+    const pnpm = await resolvePnpm();
+    await run(
+      pnpm.command,
+      [...pnpm.prefix, "--filter", "@mercuryworkshop/folio", "rewriter:build"],
+      { cwd: vendorDir },
+    );
+    await run(
+      process.execPath,
+      [
+        rspackPath,
+        "build",
+        "--mode",
+        "production",
+        "--config-name",
+        "folio-iife",
+        "--config-name",
+        "folio-esmodule",
+        "--config-name",
+        "folio-controller",
+        "--config-name",
+        "folio-utils-iife",
+      ],
+      { cwd: vendorDir, env: { NODE_ENV: "production" } },
+    );
+    await buildDeclarations();
+    return true;
+  } catch (error) {
+    if (!hasPrebuiltFolio()) throw error;
+    console.warn(
+      "folio build failed; using vendored prebuilt artifacts instead",
+      error?.message || error,
+    );
+    return false;
+  }
+}
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -202,32 +251,5 @@ async function copyExpectedFiles() {
 }
 
 await ensureVendoredSource();
-await ensureInstall();
-const pnpm = await resolvePnpm();
-await run(
-  pnpm.command,
-  [...pnpm.prefix, "--filter", "@mercuryworkshop/folio", "rewriter:build"],
-  {
-    cwd: vendorDir,
-  },
-);
-await run(
-  process.execPath,
-  [
-    rspackPath,
-    "build",
-    "--mode",
-    "production",
-    "--config-name",
-    "folio-iife",
-    "--config-name",
-    "folio-esmodule",
-    "--config-name",
-    "folio-controller",
-    "--config-name",
-    "folio-utils-iife",
-  ],
-  { cwd: vendorDir, env: { NODE_ENV: "production" } },
-);
-await buildDeclarations();
+await tryFolioBuild();
 await copyExpectedFiles();
