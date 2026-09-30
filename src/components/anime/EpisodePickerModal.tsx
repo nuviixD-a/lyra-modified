@@ -18,6 +18,16 @@ import {
   type AnimeSeason,
 } from "../../features/anime/anime.ts";
 import {
+  episodeWatchFraction,
+  findResumePoint,
+  formatTrackerAge,
+  formatTrackerTime,
+  readSeriesProgress,
+  subscribeToEpisodeTracker,
+  type EpisodeProgress,
+  type SeriesProgress,
+} from "../../features/anime/episodeTracker.ts";
+import {
   hasAnimeIdentity,
   normalizeAnimeIds,
   type AnimeIds,
@@ -173,6 +183,7 @@ const EpisodePickerModal = memo(function EpisodePickerModal({
   const episodeRequestIdRef = useRef(0);
   const autoPlayedRef = useRef(0);
   const modalRef = useRef<HTMLDivElement>(null);
+  const playEpisodeRef = useRef<((episode: number) => void) | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -221,6 +232,44 @@ const EpisodePickerModal = memo(function EpisodePickerModal({
   const currentLoadingEpisodes = hasCurrentEpisodeData
     ? loadingEpisodes
     : hasAnimeIdentity(activeIds);
+
+  const seriesTrackerKey = useMemo(
+    () => `${activeTitle || ""}|${activeYear ?? 0}`,
+    [activeTitle, activeYear],
+  );
+  const [seriesProgress, setSeriesProgress] = useState<SeriesProgress | null>(
+    () => readSeriesProgress(activeIds, activeTitle || ""),
+  );
+  const trackerIdsRef = useRef(activeIds);
+  trackerIdsRef.current = activeIds;
+
+  useEffect(() => {
+    return subscribeToEpisodeTracker(() => {
+      setSeriesProgress(
+        readSeriesProgress(trackerIdsRef.current, activeTitle || ""),
+      );
+    });
+  }, [seriesTrackerKey, activeTitle]);
+
+  const resumePoint = useMemo(
+    () => findResumePoint(seriesProgress),
+    [seriesProgress],
+  );
+  const activeSeasonNumber = selectedSeason?.number || 1;
+  const canSuggestResume = Boolean(
+    visible &&
+      resumePoint &&
+      !initialEpisode &&
+      !isAnimeMovieFormat(activeFormat) &&
+      (resumePoint.season || 1) === activeSeasonNumber,
+  );
+
+  const playResumeEpisode = useCallback(
+    (resume: EpisodeProgress) => {
+      playEpisodeRef.current?.(resume.episode);
+    },
+    [],
+  );
 
   const { modalStateClass, onAnimationEnd } = useManagedModal({
     visible: visible && !embedded,
@@ -416,6 +465,7 @@ const EpisodePickerModal = memo(function EpisodePickerModal({
       onPlay,
     ],
   );
+  playEpisodeRef.current = playEpisode;
 
   useEffect(() => {
     if (
@@ -534,6 +584,27 @@ const EpisodePickerModal = memo(function EpisodePickerModal({
               ? "fetching episodes..."
               : "choose an episode"}
         </span>
+        {canSuggestResume && resumePoint && (
+          <button
+            type="button"
+            class="episode-resume-banner"
+            onClick={() => playResumeEpisode(resumePoint)}
+          >
+            <span class="episode-resume-icon">▶</span>
+            <span class="episode-resume-text">
+              <strong>
+                {resumePoint.positionSeconds > 0
+                  ? `continue episode ${resumePoint.episode}`
+                  : `start episode ${resumePoint.episode}`}
+              </strong>
+              <span class="episode-resume-meta">
+                {resumePoint.positionSeconds > 0
+                  ? `${formatTrackerTime(resumePoint.positionSeconds)} · ${formatTrackerAge(resumePoint.updatedAt)}`
+                  : formatTrackerAge(resumePoint.updatedAt) || "up next"}
+              </span>
+            </span>
+          </button>
+        )}
         <div class="episode-selector-grid episode-picker-grid" ref={gridRef}>
           {episodeRange.topSpacer > 0 && (
             <div
@@ -541,16 +612,30 @@ const EpisodePickerModal = memo(function EpisodePickerModal({
               style={`height:${episodeRange.topSpacer}px`}
             />
           )}
-          {visibleEpisodeNumbers.map((episode) => (
-            <button
-              key={episode}
-              class={`episode-selector-button episode-picker-btn${currentEpisode === episode && String(activeSeasonId) === String(initialSeasonId) ? " is-active" : ""}`}
-              type="button"
-              onClick={() => playEpisode(episode)}
-            >
-              {episode}
-            </button>
-          ))}
+          {visibleEpisodeNumbers.map((episode) => {
+            const progress = seriesProgress?.episodes[episode];
+            const fraction = progress ? episodeWatchFraction(progress) : null;
+            const isFinished = progress?.finished === true;
+            const isActive =
+              currentEpisode === episode &&
+              String(activeSeasonId) === String(initialSeasonId);
+            return (
+              <button
+                key={episode}
+                class={`episode-selector-button episode-picker-btn${isActive ? " is-active" : ""}${isFinished ? " is-watched" : ""}`}
+                type="button"
+                onClick={() => playEpisode(episode)}
+              >
+                {isFinished ? "✓" : episode}
+                {fraction !== null && (
+                  <span
+                    class="episode-progress-bar"
+                    style={`width:${Math.round(fraction * 100)}%`}
+                  />
+                )}
+              </button>
+            );
+          })}
           {episodeRange.bottomSpacer > 0 && (
             <div
               class="episode-picker-virtual-spacer"

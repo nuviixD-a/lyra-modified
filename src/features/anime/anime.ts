@@ -762,6 +762,15 @@ function formatsCanShareTitle(left?: string, right?: string): boolean {
   return [a, b].every((format) => format === "TV" || format === "TV_SHORT");
 }
 
+export function resolveAnimeSeasonNumber(
+  season: number | string | null | undefined,
+  title: string,
+): number {
+  const explicit = Number(season);
+  if (Number.isInteger(explicit) && explicit > 0) return explicit;
+  return seasonNumberFromTitle(title) || 1;
+}
+
 function seasonNumberFromTitle(title: string): number | undefined {
   const match = title.match(
     /(?:season|series)\s+(\d+)|\b(\d+)(?:st|nd|rd|th)\s+season\b/i,

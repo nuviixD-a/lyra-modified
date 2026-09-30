@@ -41,6 +41,85 @@
   color: var(--text-primary);
 }
 
+.episode-selector-button.is-watched {
+  color: var(--text-secondary);
+}
+
+.episode-selector-button.is-watched.is-active {
+  color: var(--text-primary);
+}
+
+.episode-selector-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.episode-progress-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent-color);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.episode-resume-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+  border-radius: var(--radius-item);
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-control) var(--motion-ease),
+    transform var(--motion-control) var(--motion-ease);
+}
+
+.episode-resume-banner:hover {
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  transform: scale(1.01);
+}
+
+.episode-resume-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: var(--bg-surface);
+  font-size: 11px;
+  flex: none;
+}
+
+.episode-resume-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.episode-resume-text strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.episode-resume-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .episode-selector-button:disabled {
   cursor: not-allowed;
   opacity: 0.35;

@@ -24,8 +24,15 @@ import {
 import {
   fetchAnimeEpisodeCount,
   isAnimeMovieFormat,
+  resolveAnimeSeasonNumber,
   type AnimeSeason,
 } from "../../features/anime/anime.ts";
+import {
+  formatTrackerTime,
+  markEpisodeFinished,
+  readSeriesProgress,
+  saveEpisodeProgress,
+} from "../../features/anime/episodeTracker.ts";
 import {
   ANIME_QUALITY_KEY,
   ANIME_SETTING_KEYS,
@@ -427,6 +434,7 @@ export default function Player() {
     playbackIds.anikotoEpisode || "",
   ].join("|");
 
+  const trackerSeason = resolveAnimeSeasonNumber(params.get("season"), title);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hlsSessionRef = useRef(0);
@@ -1863,6 +1871,24 @@ export default function Player() {
         : Math.max(0, seconds);
     };
     const effectiveTime = () => video.currentTime;
+    const trackerEpisodeNumber =
+      episodeNumber > 0 ? episodeNumber : playbackIds.anikotoEpisode ? 1 : 0;
+    let lastTrackerSaveAt = 0;
+    const saveTrackerProgress = (seconds: number, finished = false) => {
+      if (trackerEpisodeNumber < 1 || !title) return;
+      const position = Math.max(0, Math.floor(seconds));
+      if (!finished && position < 5) return;
+      saveEpisodeProgress({
+        ids: playbackIds,
+        title,
+        season: trackerSeason,
+        episode: trackerEpisodeNumber,
+        positionSeconds: position,
+        durationSeconds: cleanDuration(video.duration) || undefined,
+        finished,
+      });
+      lastTrackerSaveAt = Date.now();
+    };
     const restorePendingSeek = () => {
       const pending = pendingSeekRef.current;
       if (pending === null || video.readyState === 0) return;
@@ -1964,6 +1990,14 @@ export default function Player() {
       if (!isCurrentMedia()) return;
       playIntentRef.current = false;
       playAfterSeekRef.current = false;
+      saveTrackerProgress(effectiveTime(), true);
+      markEpisodeFinished({
+        ids: playbackIds,
+        title,
+        season: trackerSeason,
+        episode: trackerEpisodeNumber,
+        durationSeconds: cleanDuration(video.duration) || undefined,
+      });
       renderPlaybackTime(effectiveTime());
       syncMediaState({
         sourceReady: true,
@@ -1977,6 +2011,9 @@ export default function Player() {
       if (!isCurrentMedia()) return;
       lastKnownTime = effectiveTime();
       renderPlaybackTime(lastKnownTime);
+      if (Date.now() - lastTrackerSaveAt >= 5000) {
+        saveTrackerProgress(lastKnownTime);
+      }
       clearSettledPendingSeek();
       syncMediaState(
         !video.paused && !video.seeking
@@ -2080,15 +2117,16 @@ export default function Player() {
       if (resumeAppliedRef.current) return;
       resumeAppliedRef.current = true;
       const savedResume = readPlayerStorage(resumeKey);
+      const durationLimit =
+        mediaStateRef.current.duration ||
+        manifestDurationRef.current ||
+        cleanDuration(video.duration) ||
+        Infinity;
+      let restoredTime = 0;
       if (savedResume) {
         try {
           const resumeState = JSON.parse(savedResume);
           const savedTime = Number(resumeState?.currentTime);
-          const durationLimit =
-            mediaStateRef.current.duration ||
-            manifestDurationRef.current ||
-            cleanDuration(video.duration) ||
-            Infinity;
           if (
             Number.isFinite(savedTime) &&
             savedTime > 0 &&
@@ -2097,8 +2135,39 @@ export default function Player() {
             try {
               video.currentTime = savedTime;
             } catch {}
+            restoredTime = savedTime;
           }
         } catch {}
+      }
+      if (restoredTime <= 0 && trackerEpisodeNumber > 0 && title) {
+        // Fall back to the series tracker when this episode was never opened
+        // in the player before (no per-episode resume entry yet).
+        const tracked = readSeriesProgress(playbackIds, title)?.episodes[
+          trackerEpisodeNumber
+        ];
+        const trackedTime = Number(tracked?.positionSeconds);
+        if (
+          tracked &&
+          !tracked.finished &&
+          Number.isFinite(trackedTime) &&
+          trackedTime > 5 &&
+          trackedTime < durationLimit * 0.9
+        ) {
+          try {
+            video.currentTime = trackedTime;
+          } catch {}
+          restoredTime = trackedTime;
+        }
+      }
+      if (restoredTime > 0) {
+        const episodeLabel =
+          trackerEpisodeNumber > 0 ? `episode ${trackerEpisodeNumber}` : "this episode";
+        showToast(
+          "info",
+          `resuming ${episodeLabel} at ${formatTrackerTime(restoredTime)}`,
+          undefined,
+          4000,
+        );
       }
     };
 
@@ -2161,6 +2230,7 @@ export default function Player() {
           }),
         );
       } catch {}
+      saveTrackerProgress(video.currentTime);
     };
     const syncOnVisibility = () => {
       syncPlaybackState();
@@ -2188,6 +2258,9 @@ export default function Player() {
             JSON.stringify({ currentTime, timestamp: Date.now() }),
           );
         } catch {}
+      }
+      if (currentTime > 0) {
+        saveTrackerProgress(currentTime);
       }
       for (const [eventName, listener] of events) {
         video.removeEventListener(eventName, listener);
