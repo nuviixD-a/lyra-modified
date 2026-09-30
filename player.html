@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <title>player :3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet';" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet" /></noscript>
+    <style>*{box-sizing:border-box;margin:0;padding:0}html,body{background:#000;width:100%;height:100%;font-family:Lexend,sans-serif;overflow:hidden}</style>
+    <script>
+      (function () {
+        const recoveryUrl = new URL(window.location.href);
+        let recoveryAttempted = recoveryUrl.searchParams.has("lyra-recovery");
+
+        window.__lyraRecoverAsset = function () {
+          if (recoveryAttempted) return;
+          recoveryAttempted = true;
+          const target = new URL(window.location.href);
+          target.searchParams.set("lyra-recovery", "1");
+          window.location.replace(target.href);
+        };
+        window.addEventListener(
+          "vite:preloadError",
+          function (event) {
+            event.preventDefault();
+            window.__lyraRecoverAsset();
+          },
+          { once: true },
+        );
+        window.addEventListener(
+          "error",
+          function (event) {
+            const element = event.target;
+            const tagName = element?.tagName?.toLowerCase();
+            const assetUrl =
+              tagName === "script"
+                ? element.src
+                : tagName === "link" &&
+                    (element.rel === "modulepreload" ||
+                      element.rel === "stylesheet")
+                  ? element.href
+                  : "";
+            if (!assetUrl) return;
+            const failedUrl = new URL(assetUrl, window.location.href);
+            if (
+              failedUrl.origin === window.location.origin &&
+              /^\/assets\/[a-f0-9]{12}\/[^/]+$/.test(failedUrl.pathname)
+            ) {
+              window.__lyraRecoverAsset();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/dfc68dc66b68/DkSuS_papAHY.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/H_PjY6_iZLOx.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/BddaZkrO20eG.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/DqtUK8-EIpN6.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/bS5zCBVZh5-S.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/BHW-fT0qd6EN.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/CRNo-t8PxqJ4.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/CQERVoHcwCrH.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/DEJoJwj_TZi8.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/BpxsNTB66dO-.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/BVc9Gp4k7Yx7.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/DgJZXTJk4Jm2.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/DS2A3ZosYLmj.js">
+    <link rel="modulepreload" crossorigin href="/assets/dfc68dc66b68/B-Ld47i_DDr1.js">
+    <link rel="stylesheet" crossorigin href="/assets/dfc68dc66b68/MIu3xXEwkNY9.css">
+    <link rel="stylesheet" crossorigin href="/assets/dfc68dc66b68/DQls2RBM32Yt.css">
+    <link rel="stylesheet" crossorigin href="/assets/dfc68dc66b68/BgmhFvNNpqlE.css">
+    <link rel="stylesheet" crossorigin href="/assets/dfc68dc66b68/BReoh0NUQLyz.css">
+  </head>
+  <body>
+    <div id="player-root"></div>
+  </body>
+</html>

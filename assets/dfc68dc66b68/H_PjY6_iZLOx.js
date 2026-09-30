@@ -1,0 +1,1 @@
+var x6393687948a=Object['defineProperty'],x6393687948b=(b,c)=>{let d={};for(var f in b)x6393687948a(d,f,{'get':b[f],'enumerable':!0x0});return c||x6393687948a(d,Symbol['toStringTag'],{'value':'Module'}),d;};export{x6393687948b as t};
